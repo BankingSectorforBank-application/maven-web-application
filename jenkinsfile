@@ -1,0 +1,43 @@
+node{
+    
+  properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '5', daysToKeepStr: '', numToKeepStr: '5')), [$class: 'JobLocalConfiguration', changeReasonComment: ''], pipelineTriggers([pollSCM('* * * * *')])])
+   
+    def mavenhome = tool name: "maven3.8.5"
+    
+    echo "node name is ${env.Node_NAME}"
+stage('Checkout')
+{
+     
+git credentialsId: 'b11c83dd-370a-4f3d-93c1-18e3bd34982d', 
+url: 'https://github.com/BankingSectorforBank-application/maven-web-application.git'
+
+}
+stage('build')
+{
+   sh "${mavenhome}/bin/mvn clean package"
+ 
+}
+
+stage('executesonarqubereport')
+{
+ sh "${mavenhome}/bin/mvn sonar:sonar"
+}
+
+stage ('uploadArtifactintoNexus')
+{
+ sh "${mavenhome}/bin/mvn deploy"
+}
+
+stage('deployApptoTomcat')
+{
+   sshagent(['ec2-user']) 
+    // some block
+	
+	{
+	  sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@172.31.33.103:/opt/apache-tomcat-9.0.70/webapps/"
+	
+	}
+
+}
+
+}
